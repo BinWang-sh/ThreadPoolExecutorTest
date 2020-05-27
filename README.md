@@ -1,2 +1,31 @@
 # ThreadPoolExecutorTest
 ThreadPoolExecutor test about(corePoolSize, maxiumPoolSize, queue)
+
+关于ThreadPoolExecutor中的corePoolSize和maximumPoolSize官方文档中有说明
+
+ThreadPoolExecutor会自动根据设定的corePoolSize和maximumPoolSize调整pool的大小。
+
+当一个新的task通过方法execute提交
+* <1>当运行的线程数少于corePoolSize，即便已经生成的线程是空闲的状态也会新生成一个新的线程去处理请求。
+* <2>当有超过corePoolSize但是少于maximumPoolSize数量的线程正在运行，只有当queue满了时才会生成新的线程。
+* <3>将corePoolSize和maximumPoolSize设为同样的值，可以生成固定大小的线程池。
+
+Keep-alive times
+如果pool中当前有超过corePoolSize的线程，超过的线程在idle时长超过keepAliveTime将会被终止。
+
+Queuing
+任何BlockingQueue可以被用来转换和持有提交的任务。Queue的使用与pool的大小相互作用
+
+如果有少于corePoolSize个线程正在运行，Executor会倾向于添加新的线程而不是加入queue
+如果有大于等于corePoolSize个线程正在运行，Executor会倾向于将请求加入队列而不是添加新的任务
+如果请求不能被加入队列，如果运行的线程数超过了maximumPoolSize任务会被拒绝，否则会生成一个新的线程
+对于加入队列有三个一般的策略
+
+* 直接移交（Direct handoffs） 对于work queue，SynchronousQueue是缺省的选择，直接将任务交给thread不持有任务。如果没有能立即获得的线程入队列操作会失败，所以一个新的线程会被构造。这个策略避免了当处理一系列有内部依赖请求的锁。直接移交一般要求无限定的maximumPoolSize避免提交新的任务被拒绝。当大于能够处理的量的请求持续到达时线程可能会无限制增长。
+* 无限队列（Unbounded queues）使用无限队列（例如LinkedBlockingQueue没有预定义容量）当所有corePoolSize数量的线程正在运行时会导致新的任务在队列中等待。所以最多只有corePoolSize指定数量的线程会被生成，maximumPoolSize不会生效。这适用于每一个任务完全独立与其他任务，不会影响其他任何任务的执行。
+* 有限队列（Bounded queues）一个有限队列（例如ArrayBlockingQueue）有助于阻止使用maximumPoolSizes导致资源耗尽。Queue sizes和 maximum pool size是相互制衡的。 使用大的queues，小的pool size会降低资源消耗，但也会导致认为的低输出。使用小的queues，大的pool size会保持CPU繁忙
+
+
+Queue使用ArrayBlockingQueue。
+当启动任务数超过corePoolSize后新的task会先添加到Queue，当Queue满了后会启动新的线程接受task。当Queue填满，启动线程超过maximumPoolSize再有新的任务添加会抛例外
+
